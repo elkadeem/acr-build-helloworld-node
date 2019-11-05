@@ -39,3 +39,27 @@ az keyvault secret set `
         --output table
 
 #acr-tasks-welkadimacr.westeurope.azurecontainer.io
+
+az container attach --resource-group $resourceGroup --name acr-task
+
+#2ef4f97a553b1fc77e7aa489335e3634f58bef26
+
+$gitUser="elkadeem"
+$gitPAT="2ef4f97a553b1fc77e7aa489335e3634f58bef26"
+
+az acr task create `
+    --registry $registerName `
+    --name taskhelloworld `
+    --image "helloworld:{{.Run.ID}}" `
+    --context "https://github.com/$gitUser/acr-build-helloworld-node.git" `
+    --file Dockerfile `
+    --git-access-token $gitPAT
+
+az acr task logs --registry $registerName
+
+az acr task list-runs --registry $registerName --output table
+
+
+
+
+
