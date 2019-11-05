@@ -1,0 +1,41 @@
+$resourceGroup="containersGRoup"
+$registerName="welkadimacr"
+$keyVault = "welkadimkv2"
+
+az acr build --registry $registerName --image helloacrtasks:v1 .
+
+$keyVault = "welkadimkv2"
+
+az keyvault create --resource-group $resourceGroup --name $keyVault
+
+az keyvault secret set `
+    --vault-name $keyvault `
+    --name $registerName-pull-pwd `
+    --value $(az ad sp create-for-rbac `
+            --name $registerName-pull `
+            --scopes $(az acr show --name $registerName --query id --output tsv) `
+            --role acrpull `
+            --query password `
+            --output tsv)
+
+az ad sp show --id http://$registerName-pull --query password
+
+
+az keyvault secret set `
+    --vault-name $keyVault `
+    --name $registerName-pull-usr `
+    --value (az ad sp show --id http://$registerName-pull --query appId --output tsv)
+
+
+    az container create `
+        --resource-group $resourceGroup `
+        --name acr-task `
+        --image "$registerName.azurecr.io/helloacrtasks:v1" `
+        --registry-login-server "$registerName.azurecr.io" `
+        --registry-username $(az keyvault secret show --vault-name $keyVault --name $registerName-pull-usr --query value -o tsv) `
+        --registry-password $(az keyvault secret show --vault-name $keyVault --name $registerName-pull-pwd --query value -o tsv) `
+        --dns-name-label acr-tasks-$registerName `
+        --query "{FQDN:ipAddress.fqdn}" `
+        --output table
+
+#acr-tasks-welkadimacr.westeurope.azurecontainer.io
